@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#eef1f7">
+<style>:root{padding-top:env(safe-area-inset-top,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Учебный пульт</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+/* Layout: iOS 26 Liquid Glass — glass panels over a soft colour aura, floating capsule tab bar with detached + button, floating glass sheet */
+:root{
+  --bg:#eef1f7; --fg:#0b0b0f; --muted:rgba(60,60,67,.62); --faint:rgba(60,60,67,.3); --sep:rgba(60,60,67,.14);
+  --glass:rgba(255,255,255,.56); --glass-hi:rgba(255,255,255,.78); --stroke:rgba(255,255,255,.85); --sheen:rgba(255,255,255,.7);
+  --shadow:0 10px 34px rgba(40,55,110,.12),0 1px 3px rgba(40,55,110,.06);
+  --blue:#0a7aff; --blue-tint:rgba(10,122,255,.13); --on-blue:#ffffff; --fill:rgba(120,120,128,.13); --lens:rgba(255,255,255,.9);
+  --green:#2fb855; --orange:#f08c00; --red:#ff3b30;
+  --a1:rgba(90,150,255,.55); --a2:rgba(190,120,255,.42); --a3:rgba(80,220,200,.40); --a4:rgba(255,170,120,.38);
+  --f:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Segoe UI Variable","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-r:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;
+  --r:26px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#05060a; --fg:#ffffff; --muted:rgba(235,235,245,.62); --faint:rgba(235,235,245,.3); --sep:rgba(255,255,255,.1);
+  --glass:rgba(44,44,52,.5); --glass-hi:rgba(58,58,66,.72); --stroke:rgba(255,255,255,.14); --sheen:rgba(255,255,255,.14);
+  --shadow:0 12px 40px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.4);
+  --blue:#2b8cff; --blue-tint:rgba(43,140,255,.2); --fill:rgba(120,120,128,.24); --lens:rgba(255,255,255,.16);
+  --green:#30d158; --orange:#ff9f0a; --red:#ff453a;
+  --a1:rgba(40,90,220,.45); --a2:rgba(130,60,220,.32); --a3:rgba(20,150,140,.28); --a4:rgba(200,90,60,.22); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#05060a; --fg:#ffffff; --muted:rgba(235,235,245,.62); --faint:rgba(235,235,245,.3); --sep:rgba(255,255,255,.1);
+  --glass:rgba(44,44,52,.5); --glass-hi:rgba(58,58,66,.72); --stroke:rgba(255,255,255,.14); --sheen:rgba(255,255,255,.14);
+  --shadow:0 12px 40px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.4);
+  --blue:#2b8cff; --blue-tint:rgba(43,140,255,.2); --fill:rgba(120,120,128,.24); --lens:rgba(255,255,255,.16);
+  --green:#30d158; --orange:#ff9f0a; --red:#ff453a;
+  --a1:rgba(40,90,220,.45); --a2:rgba(130,60,220,.32); --a3:rgba(20,150,140,.28); --a4:rgba(200,90,60,.22); color-scheme:dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);font-size:17px;line-height:1.3;letter-spacing:-.01em;-webkit-font-smoothing:antialiased;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:6px calc(110px + env(safe-area-inset-bottom,0px))}
+.aura{position:fixed;inset:-10%;z-index:-1;pointer-events:none;
+  background:radial-gradient(38% 30% at 12% 8%,var(--a1),transparent 70%),radial-gradient(40% 32% at 92% 22%,var(--a2),transparent 70%),
+  radial-gradient(42% 34% at 20% 70%,var(--a3),transparent 70%),radial-gradient(40% 30% at 88% 88%,var(--a4),transparent 70%);filter:blur(10px)}
+.wrap{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+button{font-family:inherit}
+
+/* the glass material */
+.group,.search,.seg,.tabs .in,.plus,.sheet .panel>.group,.glassbtn{
+  background:var(--glass);-webkit-backdrop-filter:blur(30px) saturate(190%);backdrop-filter:blur(30px) saturate(190%);
+  border:.5px solid var(--stroke);box-shadow:var(--shadow),inset 0 1px 0 var(--sheen)}
+
+/* nav */
+.nav{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:10px}
+.nav .sub{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+.nav h1{font-size:34px;font-weight:700;letter-spacing:.005em;margin:2px 0 0;line-height:1.1}
+.syncdot{font-size:12px;font-weight:500;color:var(--muted);display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;margin-bottom:4px}
+.syncdot::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.syncdot.ok::before{background:var(--green);box-shadow:0 0 6px var(--green)}
+
+/* widget */
+.widget{position:relative;overflow:hidden;border-radius:30px;padding:20px;color:var(--on-blue);display:flex;flex-direction:column;gap:6px;
+  background:linear-gradient(150deg,#56a0ff 0%,#0a7aff 45%,#4b4dff 100%);box-shadow:0 14px 40px rgba(10,100,255,.32),inset 0 1px 0 rgba(255,255,255,.45);border:.5px solid rgba(255,255,255,.35)}
+.widget::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 55% at 85% -10%,rgba(255,255,255,.38),transparent 60%);pointer-events:none}
+.widget>*{position:relative}
+.widget .cap{font-size:13px;font-weight:600;opacity:.9;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.widget .when{background:rgba(255,255,255,.22);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:.5px solid rgba(255,255,255,.4);padding:4px 11px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.widget .subj{font-size:28px;font-weight:700;line-height:1.12;text-wrap:balance;letter-spacing:-.015em;margin-top:6px}
+.widget .time{font-family:var(--f-r);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.widget .meta{font-size:15px;opacity:.9}
+
+/* grouped lists */
+.sec{display:flex;flex-direction:column;gap:8px}
+.sh{display:flex;justify-content:space-between;align-items:baseline;padding:0 18px;font-size:15px;font-weight:600;color:var(--fg)}
+.sh>span:last-child:not(:first-child){font-size:13px;font-weight:500;color:var(--muted)}
+.sh button,.link{background:none;border:none;color:var(--blue);font-size:15px;font-weight:500;cursor:pointer;padding:0;letter-spacing:-.01em}
+.sf{padding:0 18px;font-size:13px;color:var(--muted);line-height:1.4}
+.group{border-radius:var(--r);overflow:hidden;min-width:0}
+.cell{display:flex;align-items:center;gap:12px;padding:13px 18px;min-height:48px;position:relative}
+.cell+.cell::before{content:"";position:absolute;top:0;right:18px;left:18px;border-top:.5px solid var(--sep)}
+.cell.ind+.cell.ind::before{left:78px}
+.cell .b{flex:1;min-width:0}
+.cell .s{font-size:17px;font-weight:500;overflow-wrap:anywhere}
+.cell .m{font-size:15px;color:var(--muted);overflow-wrap:anywhere;margin-top:2px}
+.cell .t{width:48px;flex:none;font-family:var(--f-r);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+.cell .t small{display:block;color:var(--muted);font-weight:500}
+.cell.now{background:var(--blue-tint)}
+.cell.now .t{color:var(--blue)}
+.cell.now .bar{position:absolute;left:7px;top:14px;bottom:14px;width:4px;border-radius:4px;background:var(--blue)}
+.cell.past{opacity:.42}
+.empty{padding:16px 18px;color:var(--muted);font-size:15px}
+.chev{color:var(--faint);flex:none}
+.val{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* check */
+.chk{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--faint);background:none;flex:none;display:grid;place-items:center;cursor:pointer;padding:0;align-self:flex-start;transition:transform .15s}
+.chk:active{transform:scale(.88)}
+.chk svg{width:15px;height:15px;opacity:0;color:var(--on-blue)}
+.chk[aria-checked="true"]{background:var(--blue);border-color:var(--blue);box-shadow:0 3px 10px var(--blue-tint)}
+.chk[aria-checked="true"] svg{opacity:1}
+.done .s,.done .m{color:var(--muted);text-decoration:line-through}
+.due{font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap}
+.due.soon{color:var(--orange)} .due.late{color:var(--red)}
+.x{background:none;border:none;color:var(--faint);cursor:pointer;padding:4px;flex:none;align-self:flex-start;font-size:15px}
+
+/* segmented: glass track + lens */
+.seg{display:flex;border-radius:999px;padding:4px}
+.seg button{flex:1;border:none;background:none;color:var(--fg);font-size:14px;font-weight:500;padding:8px 0;border-radius:999px;cursor:pointer;transition:background .2s}
+.seg button[aria-pressed="true"]{background:var(--lens);font-weight:600;box-shadow:0 2px 10px rgba(0,0,0,.1),inset 0 1px 0 var(--sheen)}
+
+/* grades */
+.gtop{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px 10px}
+.gtop .n{font-size:17px;font-weight:600;overflow-wrap:anywhere}
+.ring{--p:0;--c:var(--blue);width:48px;height:48px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:conic-gradient(var(--c) calc(var(--p)*1%),var(--fill) 0)}
+.ring span{width:39px;height:39px;border-radius:50%;background:var(--glass-hi);display:grid;place-items:center;font-family:var(--f-r);font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 16px}
+.g{font-family:var(--f-r);font-size:14px;font-weight:600;padding:5px 11px;border-radius:999px;background:var(--fill);font-variant-numeric:tabular-nums}
+.g.good{color:var(--green);background:color-mix(in srgb,var(--green) 16%,transparent)}
+.g.warn{color:var(--orange);background:color-mix(in srgb,var(--orange) 16%,transparent)}
+.g.bad{color:var(--red);background:color-mix(in srgb,var(--red) 16%,transparent)}
+
+/* fields & buttons */
+.field{width:100%;font:17px var(--f);color:var(--fg);background:transparent;border:none;padding:0;outline:none;letter-spacing:-.01em}
+.field::placeholder{color:var(--faint)}
+.search{display:flex;align-items:center;gap:8px;border-radius:999px;padding:12px 16px}
+.search svg{width:18px;height:18px;color:var(--muted);flex:none}
+.btn{border:none;border-radius:999px;padding:16px 18px;font-size:17px;font-weight:600;cursor:pointer;background:var(--blue);color:var(--on-blue);letter-spacing:-.01em;
+  box-shadow:0 8px 22px var(--blue-tint),inset 0 1px 0 rgba(255,255,255,.35);transition:transform .15s}
+.btn:active{transform:scale(.97)}
+.btn.tint{background:var(--glass);color:var(--blue);box-shadow:inset 0 1px 0 var(--sheen);border:.5px solid var(--stroke)}
+.btn:disabled{opacity:.4;cursor:default}
+.cellbtn{background:none;border:none;color:var(--blue);font-size:17px;text-align:left;width:100%;padding:0;cursor:pointer;letter-spacing:-.01em}
+.cellbtn.red{color:var(--red)}
+.answer{white-space:pre-wrap;font-size:16px;line-height:1.42;padding:14px 18px}
+a{color:var(--blue);text-decoration:none}
+button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* floating tab bar + detached action */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:center;pointer-events:none;
+  padding:0 max(14px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+.tabs .row{display:flex;gap:10px;width:100%;max-width:600px;align-items:center}
+.tabs .in{flex:1;display:flex;border-radius:999px;padding:5px;pointer-events:auto;min-width:0}
+.tabs .in button{flex:1;min-width:0;background:none;border:none;color:var(--fg);font-size:10px;font-weight:600;padding:6px 0 5px;display:flex;flex-direction:column;align-items:center;gap:1px;cursor:pointer;border-radius:999px;transition:background .25s,color .25s}
+.tabs .in button svg{width:25px;height:25px}
+.tabs .in button[aria-selected="true"]{color:var(--blue);background:var(--lens);box-shadow:inset 0 1px 0 var(--sheen),0 2px 10px rgba(0,0,0,.08)}
+.tabs .fillon{display:none}.tabs [aria-selected="true"] .fillon{display:block}.tabs [aria-selected="true"] .filloff{display:none}
+.plus{width:62px;height:62px;border-radius:50%;color:var(--blue);display:grid;place-items:center;cursor:pointer;flex:none;pointer-events:auto;transition:transform .15s}
+.plus:active{transform:scale(.92)}
+.plus svg{width:24px;height:24px}
+
+/* floating glass sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.22);display:flex;align-items:flex-end;justify-content:center;
+  padding:0 max(8px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+.sheet .panel{width:100%;max-width:600px;border-radius:38px;max-height:92%;overflow:auto;padding:10px 16px 20px;display:flex;flex-direction:column;gap:18px;
+  background:var(--glass-hi);-webkit-backdrop-filter:blur(40px) saturate(200%);backdrop-filter:blur(40px) saturate(200%);border:.5px solid var(--stroke);box-shadow:0 20px 60px rgba(0,0,0,.25),inset 0 1px 0 var(--sheen)}
+.sheet .panel .group{background:var(--glass);box-shadow:inset 0 1px 0 var(--sheen)}
+.grab{width:38px;height:5px;border-radius:3px;background:var(--faint);margin:0 auto}
+.snav{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
+.snav h2{font-size:17px;font-weight:600;margin:0}
+.snav .link{width:40px;height:40px;border-radius:50%;background:var(--fill);color:var(--fg);display:grid;place-items:center;font-size:17px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;padding:0 4px}
+.thumbs img{width:78px;height:78px;object-fit:cover;border-radius:18px;border:.5px solid var(--stroke)}
+textarea.field{min-height:96px;resize:vertical;line-height:1.35}
+.status{font-size:15px;color:var(--muted);white-space:pre-wrap;padding:0 16px;text-align:center}
+.status.err{color:var(--red)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--faint);border-top-color:var(--muted);border-radius:50%;vertical-align:-2px;margin-right:6px;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.acts{display:flex;flex-direction:column;gap:10px}
+.navr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.navr .syncdot{margin:0}
+.tbtn{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--fg);padding:0}
+.tbtn .moon{display:none}.tbtn.dark .sun{display:none}.tbtn.dark .moon{display:block}
+/* chat */
+.sheet .panel.chatp{height:90%;overflow:hidden;gap:12px;padding-bottom:14px}
+.msgs{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:4px 2px;overscroll-behavior:contain}
+.bub{max-width:84%;padding:10px 15px;border-radius:22px;font-size:16px;line-height:1.36;white-space:pre-wrap;overflow-wrap:anywhere}
+.bub.me{align-self:flex-end;background:var(--blue);color:var(--on-blue);border-bottom-right-radius:8px;box-shadow:0 4px 14px var(--blue-tint)}
+.bub.ai{align-self:flex-start;background:var(--glass);border:.5px solid var(--stroke);box-shadow:inset 0 1px 0 var(--sheen);border-bottom-left-radius:8px}
+.sugg{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+.sugg::-webkit-scrollbar{display:none}
+.sugg button{flex:none;border:.5px solid var(--stroke);background:var(--glass);color:var(--fg);border-radius:999px;padding:9px 14px;font-size:14px;font-weight:500;cursor:pointer;box-shadow:inset 0 1px 0 var(--sheen)}
+.composer{display:flex;align-items:flex-end;gap:8px}
+.iconbtn{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;cursor:pointer;flex:none;color:var(--fg)}
+.iconbtn.off{opacity:.4;pointer-events:none}
+.composer .box{flex:1;min-width:0;display:flex;align-items:flex-end;gap:6px;border-radius:24px;padding:6px 6px 6px 16px;background:var(--glass);border:.5px solid var(--stroke);box-shadow:inset 0 1px 0 var(--sheen)}
+.composer textarea.field{min-height:34px;max-height:120px;resize:none;padding:6px 0;line-height:1.3}
+.send{width:34px;height:34px;border-radius:50%;background:var(--blue);color:var(--on-blue);border:none;display:grid;place-items:center;flex:none;cursor:pointer}
+.chatp .thumbs:empty,.chatp .status:empty{display:none}
+#confirmRow .panel{background:transparent;box-shadow:none;border:none;-webkit-backdrop-filter:none;backdrop-filter:none;padding:0;gap:8px;border-radius:0}
+#confirmRow .group{background:var(--glass-hi);-webkit-backdrop-filter:blur(40px) saturate(200%);backdrop-filter:blur(40px) saturate(200%);border-radius:30px}
+@media (prefers-reduced-motion:no-preference){.sheet .panel{animation:up .42s cubic-bezier(.2,1.1,.3,1)}@keyframes up{from{transform:translateY(105%) scale(.96)}}
+  .view{animation:fd .25s ease-out}@keyframes fd{from{opacity:.3;transform:translateY(6px)}}}
+</style>
+</head>
+<body>
+
+<div class="aura" aria-hidden="true"></div>
+<div class="wrap">
+  <div class="nav">
+    <div>
+      <div class="sub" id="today"></div>
+      <h1 id="title">Сегодня</h1>
+    </div>
+    <div class="navr">
+      <span class="syncdot glassbtn" id="sync">…</span>
+      <button class="tbtn glassbtn" id="themeBtn" aria-label="Сменить тему">
+        <svg class="sun" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+        <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a.6.6 0 0 0-.8-.7A9.6 9.6 0 1 0 21.2 15.4a.6.6 0 0 0-.7-.8z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- TODAY -->
+  <section id="v-today" class="view" style="display:flex;flex-direction:column;gap:22px">
+    <div class="widget" id="nextCard"></div>
+    <div class="sec">
+      <div class="sh"><span>Пары сегодня</span><span id="parityLbl"></span></div>
+      <div class="group" id="todayList"></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><span>Ближайшие задания</span><button data-go="hw">Все</button></div>
+      <div class="group" id="todayHw"></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><span>Ассистент</span></div>
+      <form id="askForm" class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18.5 9.5l-4.7 1.9L12 16l-1.8-4.6L5.5 9.5l4.7-1.9z"/><path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>
+        <input type="text" id="askInput" class="field" placeholder="Спроси или попроси что-то добавить" autocomplete="off" enterkeyhint="send">
+        <button class="link" id="askBtn">Отправить</button>
+      </form>
+      <div class="sf">Например: «перенеси физру на среду», «отметь лабу по информатике сделанной», «запиши, что экзамен по истории 15 января».</div>
+    </div>
+  </section>
+
+  <!-- WEEK -->
+  <section id="v-week" class="view" hidden style="flex-direction:column;gap:18px">
+    <div class="seg" id="dayBtns"></div>
+    <div class="group" id="weekList"></div>
+  </section>
+
+  <!-- HOMEWORK -->
+  <section id="v-hw" class="view" hidden style="flex-direction:column;gap:18px">
+    <div class="seg" id="hwSeg">
+      <button aria-pressed="true" data-f="open">Активные</button>
+      <button aria-pressed="false" data-f="all">Все</button>
+    </div>
+    <div class="group" id="hwList"></div>
+    <input type="checkbox" id="showDone" hidden>
+  </section>
+
+  <!-- GRADES -->
+  <section id="v-gr" class="view" hidden style="flex-direction:column;gap:18px">
+    <div id="grList" style="display:flex;flex-direction:column;gap:18px"></div>
+  </section>
+
+  <!-- MORE -->
+  <section id="v-more" class="view" hidden style="flex-direction:column;gap:26px">
+    <div class="sec">
+      <div class="sh"><span>Оформление</span></div>
+      <div class="seg" id="themeSeg">
+        <button data-t="auto" aria-pressed="true">Авто</button>
+        <button data-t="light" aria-pressed="false">Светлая</button>
+        <button data-t="dark" aria-pressed="false">Тёмная</button>
+      </div>
+      <div class="sf">«Авто» — как на телефоне: днём светлая, ночью тёмная. Быстро переключить можно кнопкой с солнцем/луной вверху.</div>
+    </div>
+    <div id="secList" style="display:flex;flex-direction:column;gap:22px"></div>
+    <div class="sec">
+      <div class="sh"><span>Gemini</span></div>
+      <div class="group">
+        <div class="cell"><input type="password" id="gKey" class="field" placeholder="Вставь ключ API" autocomplete="off" spellcheck="false"></div>
+        <div class="cell"><input type="text" id="gModel" class="field" placeholder="gemini-2.5-flash" autocomplete="off" spellcheck="false"></div>
+        <div class="cell"><button class="cellbtn" id="gSave">Сохранить</button></div>
+        <div class="cell"><a id="gGet" class="b" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Получить ключ в Google AI Studio</a><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l6 6-6 6"/></svg></div>
+      </div>
+      <div class="sf">Ключ хранится только в этом браузере на этом устройстве и уходит только в Google. Вторая строка — модель, менять не обязательно.</div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><span>Google Classroom</span></div>
+      <div class="group">
+        <div class="cell"><input type="url" id="crUrl" class="field" placeholder="https://classroom.google.com/c/…"></div>
+        <div class="cell"><button class="cellbtn" id="crSave">Сохранить ссылку</button></div>
+        <div class="cell"><a id="crOpen" class="b" href="https://classroom.google.com" target="_blank" rel="noopener">Открыть Classroom</a><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l6 6-6 6"/></svg></div>
+      </div>
+      <div class="sf">Classroom не отдаёт данные по ссылке без входа. Открой там «Задания» или «Оценки», сделай скрин и закинь через «+».</div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><span>Неделя</span></div>
+      <div class="group">
+        <div class="cell"><span class="b" id="parityNow">Не задано</span></div>
+        <div class="cell"><button class="cellbtn" id="parOdd">Сейчас числитель</button></div>
+        <div class="cell"><button class="cellbtn" id="parEven">Сейчас знаменатель</button></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><span>Данные</span></div>
+      <div class="group">
+        <div class="cell"><button class="cellbtn red" id="clrSched">Стереть расписание</button></div>
+        <div class="cell"><button class="cellbtn red" id="clrAll">Стереть всё</button></div>
+        <div class="cell"><button class="cellbtn" id="exportBtn">Сохранить копию данных (файл)</button></div>
+        <label class="cell" style="cursor:pointer"><span class="cellbtn" id="importLbl">Загрузить данные из файла</span><input type="file" id="importFile" accept="application/json,.json" hidden></label>
+      </div>
+      <div class="sf">Совет: в Safari нажми «Поделиться» → «На экран Домой», и пульт откроется как приложение.</div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs"><div class="row"><div class="in" role="tablist">
+  <button role="tab" data-tab="today" aria-selected="true">
+    <svg class="filloff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+    <svg class="fillon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor"/><path d="M12 7v5l3.2 2" fill="none" stroke="var(--on-blue)" stroke-width="2" stroke-linecap="round"/></svg>Сегодня</button>
+  <button role="tab" data-tab="week" aria-selected="false">
+    <svg class="filloff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="4.5" width="17" height="16" rx="3.5"/><path d="M3.5 9.5h17M8 2.8v3.4M16 2.8v3.4"/></svg>
+    <svg class="fillon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3.8" fill="currentColor"/><path d="M3 9.5h18" stroke="var(--on-blue)" stroke-width="1.6"/><path d="M8 2.5v3.5M16 2.5v3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Неделя</button>
+  <button role="tab" data-tab="hw" aria-selected="false">
+    <svg class="filloff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4.5" y="3.5" width="15" height="17" rx="3"/><path d="M8.5 12l2.4 2.4 4.6-4.8"/></svg>
+    <svg class="fillon" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3.2" fill="currentColor"/><path d="M8.5 12l2.4 2.4 4.6-4.8" fill="none" stroke="var(--on-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Задания</button>
+  <button role="tab" data-tab="gr" aria-selected="false">
+    <svg class="filloff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="11" width="4" height="9" rx="1.2"/><rect x="10" y="4" width="4" height="16" rx="1.2"/><rect x="16" y="8" width="4" height="12" rx="1.2"/></svg>
+    <svg class="fillon" viewBox="0 0 24 24" fill="currentColor"><rect x="3.5" y="10.5" width="5" height="10" rx="1.4"/><rect x="9.5" y="3.5" width="5" height="17" rx="1.4"/><rect x="15.5" y="7.5" width="5" height="13" rx="1.4"/></svg>Оценки</button>
+  <button role="tab" data-tab="more" aria-selected="false">
+    <svg class="filloff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><circle cx="7.8" cy="12" r=".9" fill="currentColor"/><circle cx="12" cy="12" r=".9" fill="currentColor"/><circle cx="16.2" cy="12" r=".9" fill="currentColor"/></svg>
+    <svg class="fillon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5" fill="currentColor"/><g fill="var(--on-blue)"><circle cx="7.8" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="16.2" cy="12" r="1.2"/></g></svg>Ещё</button>
+</div>
+<button class="plus" id="fab" aria-label="Добавить фото или текст"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+</div></nav>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="panel chatp" role="dialog" aria-label="Ассистент">
+    <div class="grab"></div>
+    <div class="snav">
+      <button class="link" id="sheetClose" style="justify-self:start" aria-label="Закрыть">✕</button>
+      <h2>Ассистент</h2>
+      <button class="link" id="chatClear" style="justify-self:end" aria-label="Очистить чат" title="Очистить чат"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg></button>
+    </div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <div class="sugg" id="sugg">
+      <button>Что у меня завтра?</button>
+      <button>Добавь дз по матану к пятнице: №5–10</button>
+      <button>Какие задания горят?</button>
+      <button>Какой у меня средний балл?</button>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="composer">
+      <label class="iconbtn glassbtn" id="attach" aria-label="Прикрепить фото" title="Прикрепить фото или скрин">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3.5"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>
+        <input type="file" id="files" accept="image/*" multiple hidden>
+      </label>
+      <div class="box">
+        <textarea id="addText" class="field" rows="1" placeholder="Напиши или прикрепи фото…" enterkeyhint="send"></textarea>
+        <button class="send" id="parseBtn" aria-label="Отправить"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5.5 11.5L12 5l6.5 6.5"/></svg></button>
+        <button class="send" id="stopBtn" aria-label="Остановить" hidden><svg width="12" height="12" viewBox="0 0 12 12"><rect width="12" height="12" rx="2.5" fill="currentColor"/></svg></button>
+      </div>
+    </div>
+    <div class="status" id="parseStatus"></div>
+  </div>
+</div>
+
+<div class="sheet" id="confirmRow" hidden>
+  <div class="panel" style="background:transparent;gap:8px">
+    <div class="group" style="text-align:center">
+      <div class="cell" style="justify-content:center;font-size:13px;color:var(--muted)" id="confirmTxt"></div>
+      <div class="cell" style="justify-content:center"><button class="cellbtn red" id="confirmYes" style="text-align:center;font-size:20px">Стереть</button></div>
+    </div>
+    <div class="group"><div class="cell" style="justify-content:center"><button class="cellbtn" id="confirmNo" style="text-align:center;font-size:20px;font-weight:600">Отмена</button></div></div>
+  </div>
+</div>
+
+<script>
+const DAYS=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const DAYS_FULL=["понедельник","вторник","среда","четверг","пятница","суббота","воскресенье"];
+const TITLES={today:"Сегодня",week:"Неделя",hw:"Задания",gr:"Оценки",more:"Ещё"};
+const LS="ucheba-state-v1";
+const $=id=>document.getElementById(id);
+function blank(){return{schedule:[],homework:[],grades:[],sections:[],classroomUrl:"",parity:null}}
+let state=blank(), docRef=null, sample=null, files=[], ctl=null, weekDay=isoDay(new Date()), saveTimer=null, writing=Promise.resolve();
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+function el(tag,attrs,...kids){const e=document.createElement(tag);for(const k in attrs||{}){if(k==="class")e.className=attrs[k];else if(k==="text")e.textContent=attrs[k];else if(k==="html")e.innerHTML=attrs[k];else e.setAttribute(k,attrs[k])}for(const c of kids)if(c!=null)e.append(c);return e}
+function isoDay(d){return((d.getDay()+6)%7)+1}
+function ymd(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function mondayOf(d){const m=new Date(d.getFullYear(),d.getMonth(),d.getDate());m.setDate(m.getDate()-isoDay(m)+1);return m}
+function mins(t){const m=/^(\d{1,2}):(\d{2})/.exec(t||"");return m?(+m[1])*60+(+m[2]):null}
+function uid(){return Math.random().toString(36).slice(2,10)}
+function norm(s){return String(s||"").toLowerCase().replace(/\s+/g," ").trim()}
+
+function weekOdd(d){
+  if(!state.parity)return null;
+  const a=new Date(state.parity.monday+"T00:00:00");
+  const w=Math.round((mondayOf(d)-a)/(7*864e5));
+  return (w%2===0)===state.parity.odd;
+}
+function lessonsOn(d){
+  const odd=weekOdd(d), day=isoDay(d);
+  return state.schedule.filter(l=>+l.day===day&&(!l.weeks||l.weeks==="all"||odd===null||(l.weeks==="odd")===odd))
+    .sort((a,b)=>(mins(a.start)??0)-(mins(b.start)??0));
+}
+function nextLesson(now){
+  const nm=now.getHours()*60+now.getMinutes();
+  for(let i=0;i<14;i++){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+i);
+    for(const l of lessonsOn(d)){
+      const s=mins(l.start)??0, e=mins(l.end)??s+90;
+      if(i>0||e>nm)return{l,d,offset:i,ongoing:i===0&&s<=nm,startsIn:i===0?s-nm:null,endsIn:e-nm};
+    }
+  }
+  return null;
+}
+function fmtIn(m){if(m<60)return m+" мин";const h=Math.floor(m/60),r=m%60;return h+" ч"+(r?" "+r+" мин":"")}
+function dueInfo(due){
+  if(!due)return null;
+  const today=new Date(ymd(new Date())+"T00:00:00"), d=new Date(due+"T00:00:00");
+  if(isNaN(d))return{text:due,cls:""};
+  const n=Math.round((d-today)/864e5);
+  const text=n<0?"Просрочено":n===0?"Сегодня":n===1?"Завтра":n<7?DAYS[isoDay(d)-1]+", "+d.getDate()+"."+String(d.getMonth()+1).padStart(2,"0"):d.getDate()+"."+String(d.getMonth()+1).padStart(2,"0");
+  return{text,cls:n<0?"late":n<=2?"soon":"",n};
+}
+function lessonMeta(l){return[l.kind,l.room&&("ауд. "+l.room),l.teacher].filter(Boolean).join(" · ")}
+
+/* ---------- render ---------- */
+function render(){
+  const now=new Date();
+  $("today").textContent=DAYS_FULL[isoDay(now)-1]+", "+now.toLocaleDateString("ru-RU",{day:"numeric",month:"long"});
+  const odd=weekOdd(now);
+  $("parityLbl").textContent=odd===null?"":odd?"числитель":"знаменатель";
+  $("parityNow").textContent=odd===null?"Числитель/знаменатель не задан":"Эта неделя: "+(odd?"числитель":"знаменатель");
+
+  const nc=$("nextCard"); nc.replaceChildren();
+  const n=nextLesson(now);
+  if(!state.schedule.length){
+    nc.append(el("div",{class:"cap"},el("span",{text:"Следующая пара"})),el("div",{class:"subj",text:"Расписания пока нет"}),
+      el("div",{class:"meta",text:"Нажми + внизу и закинь фото расписания."}));
+  }else if(!n){
+    nc.append(el("div",{class:"cap"},el("span",{text:"Следующая пара"})),el("div",{class:"subj",text:"Две недели без пар"}));
+  }else{
+    const when=n.ongoing?"ещё "+fmtIn(n.endsIn):n.offset===0?"через "+fmtIn(n.startsIn):n.offset===1?"завтра":DAYS_FULL[isoDay(n.d)-1];
+    nc.append(el("div",{class:"cap"},el("span",{text:n.ongoing?"Сейчас идёт":"Следующая пара"}),el("span",{class:"when",text:when})),
+      el("div",{class:"subj",text:n.l.subject||"Пара"}),
+      el("div",{class:"time",text:(n.l.start||"")+(n.l.end?" – "+n.l.end:"")}),
+      lessonMeta(n.l)?el("div",{class:"meta",text:lessonMeta(n.l)}):null);
+  }
+
+  renderLessons($("todayList"),now,true);
+
+  const th=$("todayHw"); th.replaceChildren();
+  const open=sortedHw().filter(h=>!h.done).slice(0,4);
+  if(!open.length)th.append(el("div",{class:"empty",text:state.homework.length?"Всё сделано 👌":"Заданий нет. Скинь скрин из Classroom через +."}));
+  else open.forEach(h=>th.append(hwRow(h)));
+
+  const db=$("dayBtns"); db.replaceChildren();
+  DAYS.forEach((d,i)=>{const b=el("button",{"aria-pressed":String(weekDay===i+1),text:d});b.onclick=()=>{weekDay=i+1;render()};db.append(b)});
+  const wd=new Date(now); wd.setDate(now.getDate()-isoDay(now)+weekDay);
+  renderLessons($("weekList"),wd,weekDay===isoDay(now));
+
+  const hl=$("hwList"); hl.replaceChildren();
+  const all=sortedHw().filter(h=>$("showDone").checked||!h.done);
+  if(!all.length)hl.append(el("div",{class:"empty",text:"Пусто."}));else all.forEach(h=>hl.append(hwRow(h,true)));
+
+  const gl=$("grList"); gl.replaceChildren();
+  const bySub={};state.grades.forEach(g=>{(bySub[g.subject||"Без предмета"]??=[]).push(g)});
+  const subs=Object.keys(bySub).sort();
+  if(!subs.length)gl.append(el("div",{class:"group"},el("div",{class:"empty",text:"Оценок пока нет. Открой в Classroom вкладку «Оценки», сделай скрин и закинь через +."})));
+  subs.forEach(s=>{
+    const gs=bySub[s], pcts=gs.map(pct).filter(x=>x!=null);
+    const avg=pcts.length?pcts.reduce((a,b)=>a+b,0)/pcts.length:null;
+    const col=avg==null?"var(--faint)":avg>=.75?"var(--green)":avg>=.5?"var(--orange)":"var(--red)";
+    const ring=el("div",{class:"ring",style:`--p:${avg==null?0:Math.round(avg*100)};--c:${col}`},el("span",{text:avg==null?"—":Math.round(avg*100)+"%"}));
+    const g=el("div",{class:"group"});
+    g.append(el("div",{class:"gtop"},el("div",{class:"b"},el("div",{class:"n",text:s}),el("div",{class:"val",style:"font-size:13px",text:gs.length+" "+plural(gs.length,"оценка","оценки","оценок")})),ring));
+    const ch=el("div",{class:"chips"});
+    gs.forEach(x=>{const p=pct(x);ch.append(el("span",{class:"g "+(p==null?"":p>=.75?"good":p>=.5?"warn":"bad"),title:[x.title,x.date].filter(Boolean).join(" · "),text:x.value+(x.max?"/"+x.max:"")}))});
+    g.append(ch);
+    gs.filter(x=>x.title).forEach(x=>g.append(el("div",{class:"cell"},el("div",{class:"b"},el("div",{class:"s",style:"font-size:15px",text:x.title}),x.date?el("div",{class:"m",style:"font-size:13px",text:x.date}):null),el("span",{class:"val",text:x.value+(x.max?"/"+x.max:"")}))));
+    gl.append(g);
+  });
+
+  const sl=$("secList"); sl.replaceChildren();
+  state.sections.forEach(sec=>{
+    const del=el("button",{text:"Удалить"});del.style.color="var(--red)";del.onclick=()=>{state.sections=state.sections.filter(x=>x!==sec);save();render()};
+    const g=el("div",{class:"group"});(sec.items||[]).forEach(t=>g.append(el("div",{class:"cell"},el("div",{class:"b s",style:"font-size:16px",text:t}))));
+    sl.append(el("div",{class:"sec"},el("div",{class:"sh"},el("span",{text:sec.title}),del),g));
+  });
+  if(!state.sections.length)sl.append(el("div",{class:"sec"},el("div",{class:"sh"},el("span",{text:"Разделы"})),el("div",{class:"group"},el("div",{class:"empty",text:"Тут появятся разделы, которые я заведу сам: экзамены, контакты преподов, дедлайны сессии и всё остальное."}))));
+  if(document.activeElement!==$("crUrl"))$("crUrl").value=state.classroomUrl||"";
+  $("crOpen").href=/^https:\/\//.test(state.classroomUrl||"")?state.classroomUrl:"https://classroom.google.com";
+}
+function plural(n,a,b,c){const m=n%10,h=n%100;return m===1&&h!==11?a:m>=2&&m<=4&&(h<12||h>14)?b:c}
+function pct(g){const v=parseFloat(String(g.value).replace(",","."));if(isNaN(v))return null;const max=+g.max||(v<=5?5:v<=10?10:100);return Math.max(0,Math.min(1,v/max))}
+function sortedHw(){return[...state.homework].sort((a,b)=>(a.done-b.done)||((a.due||"9999")<(b.due||"9999")?-1:1))}
+function renderLessons(box,d,isToday){
+  box.replaceChildren();
+  const ls=lessonsOn(d), nm=new Date().getHours()*60+new Date().getMinutes();
+  if(!ls.length){box.append(el("div",{class:"empty",text:state.schedule.length?"Пар нет — отдыхай.":"Расписания пока нет."}));return}
+  ls.forEach(l=>{
+    const s=mins(l.start)??0,e=mins(l.end)??s+90;
+    const now=isToday&&s<=nm&&e>nm;
+    const cls="cell ind"+(now?" now":"")+(isToday&&e<=nm?" past":"");
+    const wk=l.weeks==="odd"?" · числ.":l.weeks==="even"?" · знам.":"";
+    box.append(el("div",{class:cls},now?el("span",{class:"bar"}):null,el("div",{class:"t"},l.start||"",el("small",{text:l.end||""})),
+      el("div",{class:"b"},el("div",{class:"s",text:l.subject||"Пара"}),el("div",{class:"m",text:lessonMeta(l)+wk}))));
+  });
+}
+function hwRow(h,withDel){
+  const cb=el("button",{class:"chk",role:"checkbox","aria-checked":String(!!h.done),"aria-label":"Сделано",html:CHECK});
+  cb.onclick=()=>{h.done=!h.done;save();render()};
+  const di=dueInfo(h.due);
+  const r=el("div",{class:"cell"+(h.done?" done":""),style:"align-items:flex-start"},cb,
+    el("div",{class:"b"},el("div",{class:"s",text:h.task||"Задание"}),
+      el("div",{class:"m",style:"display:flex;gap:8px;flex-wrap:wrap;font-size:14px"},el("span",{text:h.subject||""}),di?el("span",{class:"due "+di.cls,text:di.text}):null)));
+  if(withDel){const x=el("button",{class:"x","aria-label":"Удалить",text:"✕"});x.onclick=()=>{state.homework=state.homework.filter(y=>y!==h);save();render()};r.append(x)}
+  return r;
+}
+
+/* ---------- storage ---------- */
+function clean(s){const b=blank();return{...b,...(s||{}),schedule:(s?.schedule||[]).map(x=>normItem("lesson",x)),homework:(s?.homework||[]).map(x=>normItem("homework",x)),grades:(s?.grades||[]).map(x=>normItem("grade",x)),sections:s?.sections||[]}}
+function missingIds(s){return[...(s?.schedule||[]),...(s?.homework||[]),...(s?.grades||[])].some(x=>!x?.id)}
+function setSync(t,ok){const e=$("sync");e.textContent=t;e.classList.toggle("ok",!!ok)}
+function save(){
+  try{localStorage.setItem(LS,JSON.stringify(state))}catch(e){}
+  if(!docRef)return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{const body=JSON.parse(JSON.stringify(state));writing=writing.then(()=>docRef.set(body)).catch(()=>setSync("не сохранилось"))},600);
+}
+try{const raw=localStorage.getItem(LS);if(raw)state=clean(JSON.parse(raw))}catch(e){}
+setSync("на устройстве");
+render();
+setInterval(render,60000);
+
+setSync("на этом устройстве")
+
+/* ---------- theme ---------- */
+const THEME=LS+"-theme";
+let theme="auto";
+try{theme=localStorage.getItem(THEME)||"auto"}catch(e){}
+const darkMq=matchMedia("(prefers-color-scheme: dark)");
+function isDark(){const a=document.documentElement.getAttribute("data-theme");return a?a==="dark":darkMq.matches}
+function applyTheme(){
+  const r=document.documentElement;
+  if(theme==="light"||theme==="dark"){if(r.getAttribute("data-theme")!==theme)r.setAttribute("data-theme",theme)}
+  else if(r.dataset.themeMine)r.removeAttribute("data-theme");
+  r.dataset.themeMine=theme==="auto"?"":"1";
+  document.querySelectorAll("#themeSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.t===theme)));
+  $("themeBtn").setAttribute("aria-label",isDark()?"Светлая тема":"Тёмная тема");
+  $("themeBtn").classList.toggle("dark",isDark());
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=isDark()?"#05060a":"#eef1f7";
+}
+function setTheme(t){theme=t;try{localStorage.setItem(THEME,t)}catch(e){};applyTheme()}
+document.querySelectorAll("#themeSeg button").forEach(b=>b.onclick=()=>setTheme(b.dataset.t));
+$("themeBtn").onclick=()=>setTheme(isDark()?"light":"dark");
+darkMq.addEventListener?.("change",applyTheme);
+// keep the chosen theme if the host page resets the attribute
+new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+applyTheme();
+
+/* ---------- tabs & UI ---------- */
+function go(tab){
+  document.querySelectorAll(".view").forEach(v=>{v.hidden=v.id!=="v-"+tab;v.style.display=v.hidden?"":"flex"});
+  document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",String(b.dataset.tab===tab)));
+  $("title").textContent=TITLES[tab];
+  try{localStorage.setItem(LS+"-tab",tab)}catch(e){}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>go(b.dataset.tab));
+document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+try{const t=localStorage.getItem(LS+"-tab");if(t&&$("v-"+t))go(t)}catch(e){}
+document.querySelectorAll("#hwSeg button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#hwSeg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));
+  $("showDone").checked=b.dataset.f==="all";render();
+});
+$("crSave").onclick=()=>{state.classroomUrl=$("crUrl").value.trim();save();render();$("crSave").textContent="Сохранено ✓"};
+function setParity(odd){state.parity={monday:ymd(mondayOf(new Date())),odd};save();render()}
+$("parOdd").onclick=()=>setParity(true);$("parEven").onclick=()=>setParity(false);
+let pending=null;
+function ask(txt,fn){pending=fn;$("confirmTxt").textContent=txt;$("confirmRow").hidden=false}
+$("confirmNo").onclick=()=>{$("confirmRow").hidden=true;pending=null};
+$("confirmRow").onclick=e=>{if(e.target.id==="confirmRow"){$("confirmRow").hidden=true;pending=null}};
+$("confirmYes").onclick=()=>{pending?.();pending=null;$("confirmRow").hidden=true;save();render()};
+$("clrSched").onclick=()=>ask("Расписание будет удалено.",()=>{state.schedule=[]});
+$("clrAll").onclick=()=>ask("Все пары, задания, оценки и разделы будут удалены.",()=>{state={...blank(),classroomUrl:state.classroomUrl}});
+
+/* ---------- Gemini settings ---------- */
+const CFG=LS+"-gemini";
+let cfg={key:"",model:"gemini-2.5-flash"};
+try{cfg={...cfg,...JSON.parse(localStorage.getItem(CFG)||"{}")}}catch(e){}
+$("gKey").value=cfg.key;$("gModel").value=cfg.model;
+$("gSave").onclick=()=>{cfg.key=$("gKey").value.trim();cfg.model=$("gModel").value.trim()||"gemini-2.5-flash";$("gModel").value=cfg.model;
+  try{localStorage.setItem(CFG,JSON.stringify(cfg))}catch(e){};$("gSave").textContent="Сохранено ✓";setTimeout(()=>$("gSave").textContent="Сохранить",1500)};
+
+/* ---------- backup ---------- */
+$("exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,1)],{type:"application/json"});
+  const a=el("a",{href:URL.createObjectURL(blob),download:"ucheba-"+ymd(new Date())+".json"});document.body.append(a);a.click();a.remove();
+};
+$("importFile").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{state=clean(JSON.parse(await f.text()));commit();$("importLbl").textContent="Загружено ✓"}catch(err){$("importLbl").textContent="Файл не подошёл"}
+  e.target.value="";
+};
+
+async function gemini(body,signal){
+  if(!cfg.key)throw{code:"no_key"};
+  let r;
+  try{
+    r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(cfg.model)+":generateContent",
+      {method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":cfg.key},body:JSON.stringify(body),signal});
+  }catch(e){if(e?.name==="AbortError")throw{code:"cancelled"};throw{code:"network"}}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw{code:"http",status:r.status,message:j?.error?.message||""};
+  const c=j.candidates?.[0];
+  if(!c)throw{code:"refused"};
+  return c;
+}
+function textOf(c){return(c?.content?.parts||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join("").trim()}
+function parseJson(t){
+  try{return JSON.parse(t)}catch(e){}
+  const m=/```(?:json)?\s*([\s\S]*?)```/.exec(t);if(m){try{return JSON.parse(m[1])}catch(e){}}
+  const a=t.indexOf("{"),b=t.lastIndexOf("}");if(a>=0&&b>a){try{return JSON.parse(t.slice(a,b+1))}catch(e){}}
+  throw{code:"invalid_json"};
+}
+function blobToB64(b){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(",")[1]);fr.onerror=rej;fr.readAsDataURL(b)})}
+
+/* ---------- assistant chat ---------- */
+let chat=[];
+try{chat=JSON.parse(localStorage.getItem(LS+"-chat")||"[]")}catch(e){}
+function saveChat(){chat=chat.slice(-40);try{localStorage.setItem(LS+"-chat",JSON.stringify(chat))}catch(e){}}
+function scrollChat(){const m=$("msgs");m.scrollTop=m.scrollHeight}
+function bubble(role,text){const b=el("div",{class:"bub "+(role==="user"?"me":"ai"),text});$("msgs").append(b);scrollChat();return b}
+function renderChat(){
+  const m=$("msgs");m.replaceChildren();
+  if(!chat.length)bubble("ai",cfg.key?"Привет! Я слежу за твоим пультом. Могу добавить задание или оценку, поменять пару, отметить сделанное, завести раздел. Можешь прислать фото расписания или скрин из Classroom, я всё разложу.":"Привет! Сначала вставь ключ Gemini: вкладка «Ещё» → «Gemini» → «Сохранить». После этого я смогу всё добавлять сам.");
+  chat.forEach(t=>bubble(t.role,t.content));
+  $("sugg").hidden=chat.length>0;
+}
+function openChat(){$("sheet").hidden=false;renderChat();setTimeout(()=>{try{$("addText").focus({preventScroll:true})}catch(e){}},350)}
+$("fab").onclick=openChat;
+$("sheetClose").onclick=()=>{$("sheet").hidden=true};
+$("sheet").onclick=e=>{if(e.target.id==="sheet")$("sheet").hidden=true};
+$("chatClear").onclick=()=>{chat=[];saveChat();renderChat()};
+document.querySelectorAll("#sugg button").forEach(b=>b.onclick=()=>send(b.textContent));
+$("files").onchange=e=>{
+  files=[...e.target.files];
+  const t=$("thumbs");t.replaceChildren();
+  files.forEach(f=>t.append(el("img",{src:URL.createObjectURL(f),alt:""})));
+};
+$("addText").addEventListener("input",e=>{const t=e.target;t.style.height="auto";t.style.height=Math.min(120,t.scrollHeight)+"px"});
+$("addText").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();send()}});
+$("parseBtn").onclick=()=>send();
+$("stopBtn").onclick=()=>ctl?.abort();
+$("askForm").onsubmit=e=>{e.preventDefault();const q=$("askInput").value.trim();if(!q)return;$("askInput").value="";openChat();send(q)};
+
+function busy(on){$("parseBtn").hidden=on;$("stopBtn").hidden=!on;$("attach").classList.toggle("off",on)}
+
+async function send(textOverride){
+  const text=String(textOverride??$("addText").value).trim();
+  if(!files.length&&!text)return;
+  if(!$("stopBtn").hidden)return;
+  const pics=files;files=[];$("files").value="";$("thumbs").replaceChildren();
+  $("addText").value="";$("addText").style.height="";
+  chat.push({role:"user",content:(pics.length?"📎 фото: "+pics.length+(text?"\n":""):"")+text});
+  renderChat();
+  const b=bubble("ai","");b.replaceChildren(el("span",{class:"spin"}),pics.length?"Смотрю фото…":"Думаю…");
+  busy(true);ctl=new AbortController();
+  try{
+    const reply=pics.length?await parseImages(pics,text):await agent(text,b);
+    chat.push({role:"assistant",content:reply});
+  }catch(e){
+    if(e?.code!=="cancelled")chat.push({role:"assistant",content:errText(e)});
+  }finally{busy(false);saveChat();renderChat()}
+}
+
+const RULES=`Ты — ИИ-ассистент в «Учебном пульте» студента (расписание пар, задания, оценки, свои разделы). У тебя есть функции, которые прямо меняют данные пульта.
+Правила:
+- Если студент просит что-то добавить, изменить, удалить или отметить — сразу сделай это функциями (не спрашивай разрешения на мелочи), потом коротко подтверди, что сделал.
+- Удаление больших объёмов (всё расписание, все оценки) делай только если студент явно попросил.
+- Ссылайся на элементы по их "id" из данных. day: 1=понедельник … 7=воскресенье. Время "HH:MM". Даты "YYYY-MM-DD", относительные («к пятнице», «завтра») считай от сегодняшней даты.
+- weeks у пары: "all", "odd" (числитель) или "even" (знаменатель).
+- Всё, что не пара/задание/оценка, но полезно (экзамены, контакты, ссылки, заметки), клади в разделы через upsert_section.
+- Отвечай коротко, по-дружески, по-русски, обычным текстом без markdown. Отвечай на вопросы по данным пульта; если данных не хватает — скажи, что прислать.`;
+
+function ctxNow(){
+  const now=new Date(),o=weekOdd(now);
+  return `Сейчас ${ymd(now)} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}, ${DAYS_FULL[isoDay(now)-1]}. Неделя: ${o===null?"не задана":o?"числитель (odd)":"знаменатель (even)"}.
+Данные пульта (JSON): ${JSON.stringify({schedule:state.schedule,homework:state.homework,grades:state.grades,sections:state.sections})}`;
+}
+// Gemini wants history to start with "user" and alternate roles
+function history(){
+  const out=[];
+  for(const t of chat.slice(-13,-1)){
+    const role=t.role==="user"?"user":"model",txt=t.content||"…";
+    if(!out.length&&role!=="user")continue;
+    if(out.length&&out[out.length-1].role===role)out[out.length-1].parts[0].text+="\n"+txt;
+    else out.push({role,parts:[{text:txt}]});
+  }
+  if(out.length&&out[out.length-1].role==="user")out.push({role:"model",parts:[{text:"…"}]});
+  return out;
+}
+
+async function agent(text,b){
+  const contents=[...history(),{role:"user",parts:[{text:ctxNow()+"\n\nСообщение студента: "+text}]}];
+  const decl=[{functionDeclarations:TOOLS.map(({execute,...d})=>d)}];
+  for(let round=0;round<6;round++){
+    const c=await gemini({systemInstruction:{parts:[{text:RULES}]},contents,tools:decl},ctl.signal);
+    const parts=c.content?.parts||[];
+    const calls=parts.filter(p=>p.functionCall);
+    if(!calls.length)return textOf(c)||"Готово.";
+    contents.push({role:"model",parts});
+    const resp=calls.map(p=>{
+      const tool=TOOLS.find(t=>t.name===p.functionCall.name);let result;
+      try{result=tool?tool.execute(p.functionCall.args||{}):{error:"нет такой функции"}}catch(e){result={error:String(e?.message||e)}}
+      return{functionResponse:{name:p.functionCall.name,response:{result}}};
+    });
+    b.replaceChildren(el("span",{class:"spin"}),"Вношу изменения…");
+    contents.push({role:"user",parts:resp});
+  }
+  return "Готово, внёс изменения.";
+}
+
+const KINDS={homework:"homework",grade:"grades",lesson:"schedule"};
+const KIND={type:"string",enum:["homework","grade","lesson"]};
+const HW={type:"object",properties:{subject:{type:"string"},task:{type:"string"},due:{type:"string",description:"YYYY-MM-DD"}},required:["task"]};
+const GR={type:"object",properties:{subject:{type:"string"},title:{type:"string",description:"за что"},value:{type:"string"},max:{type:"number"},date:{type:"string",description:"YYYY-MM-DD"}},required:["value"]};
+const LE={type:"object",properties:{day:{type:"integer",description:"1=пн … 7=вс"},start:{type:"string"},end:{type:"string"},subject:{type:"string"},room:{type:"string"},teacher:{type:"string"},kind:{type:"string",description:"лекция/практика/лаба/семинар"},weeks:{type:"string",enum:["all","odd","even"]}},required:["day","start","subject"]};
+const FIELDS={type:"object",properties:{...HW.properties,...GR.properties,...LE.properties,done:{type:"boolean"}}};
+function commit(){save();render()}
+function listOf(kind){const a=state[KINDS[String(kind)]];if(!a)throw new Error("kind должен быть homework, grade или lesson");return a}
+function adder(kind){return({items})=>{const a=listOf(kind);const ids=(Array.isArray(items)?items:[]).map(o=>{const it=normItem(kind,o);a.push(it);return it.id});commit();return{added:ids}}}
+const TOOLS=[
+  {name:"add_homework",description:"Добавить задания.",parameters:{type:"object",properties:{items:{type:"array",items:HW}},required:["items"]},execute:adder("homework")},
+  {name:"add_grades",description:"Добавить оценки.",parameters:{type:"object",properties:{items:{type:"array",items:GR}},required:["items"]},execute:adder("grade")},
+  {name:"add_lessons",description:"Добавить пары в расписание.",parameters:{type:"object",properties:{items:{type:"array",items:LE}},required:["items"]},execute:adder("lesson")},
+  {name:"update_item",description:"Изменить поля одного задания/оценки/пары по id. Например отметить задание сделанным: fields={done:true}; перенести пару: fields={day:3,start:\"10:10\"}.",
+    parameters:{type:"object",properties:{kind:KIND,id:{type:"string"},fields:FIELDS},required:["kind","id","fields"]},
+    execute({kind,id,fields}){const a=listOf(kind);const i=a.findIndex(x=>x.id===String(id));if(i<0)throw new Error("Нет элемента с таким id");a[i]=normItem(String(kind),{...a[i],...(fields||{}),id:a[i].id});commit();return a[i]}},
+  {name:"delete_items",description:"Удалить задания/оценки/пары по списку id.",
+    parameters:{type:"object",properties:{kind:KIND,ids:{type:"array",items:{type:"string"}}},required:["kind","ids"]},
+    execute({kind,ids}){const k=KINDS[String(kind)];if(!k)throw new Error("Неверный kind");const set=new Set((ids||[]).map(String));const before=state[k].length;state[k]=state[k].filter(x=>!set.has(x.id));commit();return{deleted:before-state[k].length}}},
+  {name:"upsert_section",description:"Создать раздел или дополнить существующий (по названию). replace=true заменяет его пункты целиком.",
+    parameters:{type:"object",properties:{title:{type:"string"},items:{type:"array",items:{type:"string"}},replace:{type:"boolean"}},required:["title","items"]},
+    execute({title,items,replace}){title=String(title||"").trim();if(!title)throw new Error("Нужно название");let s=state.sections.find(x=>norm(x.title)===norm(title));if(!s){s={title,items:[]};state.sections.push(s)}
+      if(replace)s.items=[];const have=new Set(s.items.map(norm));(items||[]).map(String).forEach(t=>{if(!have.has(norm(t))){s.items.push(t);have.add(norm(t))}});commit();return s}},
+  {name:"delete_section",description:"Удалить раздел по названию.",
+    parameters:{type:"object",properties:{title:{type:"string"}},required:["title"]},
+    execute({title}){const n=state.sections.length;state.sections=state.sections.filter(x=>norm(x.title)!==norm(title));commit();return{deleted:n-state.sections.length}}},
+  {name:"set_week_parity",description:"Указать, какая сейчас неделя: числитель (currentWeekOdd=true) или знаменатель (false).",
+    parameters:{type:"object",properties:{currentWeekOdd:{type:"boolean"}},required:["currentWeekOdd"]},
+    execute({currentWeekOdd}){state.parity={monday:ymd(mondayOf(new Date())),odd:!!currentWeekOdd};commit();return{ok:true}}},
+];
+
+// Re-encode to JPEG: handles iPhone HEIC and shrinks big photos
+function toJpeg(file){
+  return new Promise(res=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{const k=Math.min(1,2000/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement("canvas");
+      c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);c.toBlob(b=>res(b||file),"image/jpeg",.88)};
+    img.onerror=()=>{URL.revokeObjectURL(url);res(file)};
+    img.src=url;
+  });
+}
+function compactState(){return JSON.stringify({schedule:state.schedule,homework:state.homework,grades:state.grades,sections:state.sections,parity:state.parity})}
+function errText(e){
+  if(e?.code==="no_key")return"Нет ключа Gemini. Вставь его во вкладке «Ещё» → «Gemini» и нажми «Сохранить».";
+  if(e?.code==="network")return"Нет связи с Gemini. Проверь интернет (в некоторых странах Gemini доступен только через VPN).";
+  if(e?.code==="http"){
+    if(e.status===400&&/api key|API_KEY/i.test(e.message))return"Ключ не подходит. Проверь, что скопировал его целиком.";
+    if(e.status===401||e.status===403)return"Ключ не подходит или у него нет доступа к Gemini API.";
+    if(e.status===404)return"Модель «"+cfg.model+"» не найдена. Поменяй её в «Ещё» → «Gemini», например на gemini-2.5-flash.";
+    if(e.status===429)return"Лимит запросов Gemini исчерпан. Подожди минуту и попробуй ещё раз.";
+    return"Gemini вернул ошибку "+e.status+(e.message?": "+e.message:"");
+  }
+  if(e?.code==="invalid_json")return"Ответ получился кривой — отправь ещё раз.";
+  if(e?.code==="refused")return"Gemini не ответил на это. Попробуй сформулировать иначе или другое фото.";
+  return"Что-то пошло не так. Попробуй ещё раз.";
+}
+
+async function parseImages(pics,text){
+  const imgs=await Promise.all(pics.slice(0,8).map(toJpeg));
+  const datas=await Promise.all(imgs.map(blobToB64));
+  const now=new Date();
+  const prompt=`Ты — помощник студента, который ведёт его учебный пульт. Сегодня ${ymd(now)}, ${DAYS_FULL[isoDay(now)-1]}.
+Текущие данные пульта (JSON): ${compactState()}
+
+Студент прислал ${imgs.length} изображ. и текст: """${text||"(без текста)"}"""
+Изображения могут быть: фото/скрин расписания пар, скрины Google Classroom (лента, задания, оценки), фото доски, сообщения из чата группы, что угодно другое.
+Определи, что прислано, и извлеки всё полезное. Не выдумывай того, чего нет на изображении или в тексте. Если в тексте есть просьба — учти её.
+
+Ответь ТОЛЬКО одним JSON-объектом:
+{"schedule": null ИЛИ полный массив пар (только если прислано расписание; он заменит текущее) [{"day":1-7 (1=понедельник),"start":"HH:MM","end":"HH:MM","subject":"короткое название","room":"","teacher":"","kind":"лекция|практика|лаба|семинар|...","weeks":"all|odd|even"}],
+ "homework": [{"subject":"","task":"что сделать, кратко","due":"YYYY-MM-DD или null"}],
+ "grades": [{"subject":"","title":"за что","value":"оценка/балл как на скрине","max": число или null,"date":"YYYY-MM-DD или null"}],
+ "sections": [{"title":"короткое название раздела","items":["строка", ...]}],
+ "currentWeekOdd": true|false|null,
+ "message": "1-2 предложения по-русски: что добавил"}
+Правила: числитель/верхняя/нечётная неделя = "odd", знаменатель/нижняя/чётная = "even". Если указаны только номера пар без времени, ставь типичное время: 1) 08:30–10:00 2) 10:10–11:40 3) 11:50–13:20 4) 13:50–15:20 5) 15:30–17:00 6) 17:10–18:40. Даты вроде «до пятницы» переводи в YYYY-MM-DD относительно сегодняшней. В "sections" клади всё, что не расписание/задание/оценка, но полезно (экзамены, контакты, правила, ссылки); используй существующие названия разделов, если подходят. Названия предметов пиши одинаково с уже существующими. Не повторяй задания и оценки, которые уже есть в данных.`;
+  const c=await gemini({contents:[{role:"user",parts:[{text:prompt},...datas.map(d=>({inlineData:{mimeType:"image/jpeg",data:d}}))]}],
+    generationConfig:{responseMimeType:"application/json"}},ctl.signal);
+  const r=parseJson(textOf(c));
+  merge(r||{});commit();
+  return "✓ "+(r?.message||"Готово, разложил.");
+}
+
+function normItem(kind,o){
+  o=o||{};
+  if(kind==="homework")return{id:o.id||uid(),subject:String(o.subject||""),task:String(o.task||""),due:/^\d{4}-\d{2}-\d{2}$/.test(o.due||"")?o.due:null,done:!!o.done};
+  if(kind==="grade")return{id:o.id||uid(),subject:String(o.subject||""),title:String(o.title||""),value:String(o.value??""),max:+o.max||null,date:/^\d{4}-\d{2}-\d{2}$/.test(o.date||"")?o.date:null};
+  return{id:o.id||uid(),day:Math.min(7,Math.max(1,Math.round(+o.day)||1)),start:String(o.start||""),end:String(o.end||""),subject:String(o.subject||""),room:String(o.room||""),teacher:String(o.teacher||""),kind:String(o.kind||""),weeks:["odd","even"].includes(o.weeks)?o.weeks:"all"};
+}
+function merge(r){
+  if(Array.isArray(r.schedule)&&r.schedule.length)state.schedule=r.schedule.filter(l=>l&&+l.day>=1&&+l.day<=7).map(l=>normItem("lesson",{...l,id:null}));
+  const hk=new Set(state.homework.map(h=>norm(h.subject)+"|"+norm(h.task)));
+  (r.homework||[]).forEach(h=>{if(!h?.task)return;const k=norm(h.subject)+"|"+norm(h.task);if(hk.has(k))return;hk.add(k);state.homework.push(normItem("homework",{...h,id:null,done:false}))});
+  const gk=new Set(state.grades.map(g=>norm(g.subject)+"|"+norm(g.title)+"|"+norm(g.value)));
+  (r.grades||[]).forEach(g=>{if(g?.value==null||g.value==="")return;const k=norm(g.subject)+"|"+norm(g.title)+"|"+norm(g.value);if(gk.has(k))return;gk.add(k);state.grades.push(normItem("grade",{...g,id:null}))});
+  (r.sections||[]).forEach(s=>{if(!s?.title)return;let ex=state.sections.find(x=>norm(x.title)===norm(s.title));if(!ex){ex={title:String(s.title),items:[]};state.sections.push(ex)}
+    const have=new Set(ex.items.map(norm));(s.items||[]).forEach(t=>{t=String(t);if(!have.has(norm(t))){ex.items.push(t);have.add(norm(t))}})});
+  if(typeof r.currentWeekOdd==="boolean")state.parity={monday:ymd(mondayOf(new Date())),odd:r.currentWeekOdd};
+}
+</script>
+</body>
+</html>
