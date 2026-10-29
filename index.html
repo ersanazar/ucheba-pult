@@ -643,27 +643,47 @@ $("importFile").onchange=async e=>{
   e.target.value="";
 };
 
-async function gemini(body,signal,retried){
-  if(!cfg.key)throw{code:"no_key"};
-  if(!cfg.model){await loadModels().catch(()=>{});if(!cfg.model)throw{code:"no_model"}}
+function sleep(ms,signal){return new Promise((res,rej)=>{const t=setTimeout(res,ms);signal?.addEventListener("abort",()=>{clearTimeout(t);rej({code:"cancelled"})},{once:true})})}
+async function callModel(model,body,signal){
   let r;
   try{
-    r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(cfg.model)+":generateContent",
+    r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",
       {method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":cfg.key},body:JSON.stringify(body),signal});
-  }catch(e){if(e?.name==="AbortError")throw{code:"cancelled"};throw{code:"network"}}
+  }catch(e){if(e?.name==="AbortError"||signal?.aborted)throw{code:"cancelled"};throw{code:"network"}}
   const j=await r.json().catch(()=>({}));
-  if(!r.ok){
-    const msg=j?.error?.message||"";
-    // model retired or misspelled: pick a working one from the key's list and retry once
-    if(!retried&&(r.status===404||/not found|not supported|unknown model/i.test(msg))){
-      const old=cfg.model;await loadModels().catch(()=>{});
-      if(cfg.model&&cfg.model!==old)return gemini(body,signal,true);
-    }
-    throw{code:"http",status:r.status,message:msg};
-  }
+  if(!r.ok)throw{code:"http",status:r.status,message:j?.error?.message||""};
   const c=j.candidates?.[0];
   if(!c)throw{code:"refused"};
   return c;
+}
+// Busy (503/500/429) or flaky network: wait and retry once, then try the next model.
+// Missing model (404): go straight to the next one and remember the one that worked.
+async function gemini(body,signal){
+  if(!cfg.key)throw{code:"no_key"};
+  if(!models.length)await loadModels().catch(()=>{});
+  if(!cfg.model&&models[0]){cfg.model=models[0].id;saveCfg()}
+  if(!cfg.model)throw{code:"no_model"};
+  const queue=[cfg.model,...models.map(m=>m.id).filter(id=>id!==cfg.model)].slice(0,4);
+  let last,mainGone=false;
+  for(const model of queue){
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        const c=await callModel(model,body,signal);
+        if(model!==cfg.model&&mainGone){cfg.model=model;saveCfg();fillModels()}
+        return c;
+      }catch(e){
+        if(e.code==="cancelled"||e.code==="refused")throw e;
+        last=e;
+        const busy=e.code==="network"||(e.code==="http"&&[429,500,502,503,504].includes(e.status));
+        const gone=e.code==="http"&&(e.status===404||/not found|not supported|unknown model/i.test(e.message));
+        if(!busy&&!gone)throw e;
+        if(gone&&model===cfg.model)mainGone=true;
+        if(busy&&attempt===0){await sleep(1800,signal);continue}
+        break;
+      }
+    }
+  }
+  throw last;
 }
 function textOf(c){return(c?.content?.parts||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join("").trim()}
 function parseJson(t){
@@ -675,8 +695,11 @@ function parseJson(t){
 function blobToB64(b){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(",")[1]);fr.onerror=rej;fr.readAsDataURL(b)})}
 
 /* ---------- assistant chat ---------- */
+// logins and passwords never leave the phone: they are not sent to Google and not kept in chat history
+const SECRET_RE=/парол|parol|password|passw|логин\s*[:=-]|login\s*[:=-]|[:=-]\s*login\b|[:=-]\s*логин/i;
 let chat=[];
 try{chat=JSON.parse(localStorage.getItem(LS+"-chat")||"[]")}catch(e){}
+if(chat.some(t=>SECRET_RE.test(t.content||""))){chat=chat.filter(t=>!SECRET_RE.test(t.content||""));try{localStorage.setItem(LS+"-chat",JSON.stringify(chat))}catch(e){}}
 function saveChat(){chat=chat.slice(-40);try{localStorage.setItem(LS+"-chat",JSON.stringify(chat))}catch(e){}}
 function scrollChat(){const m=$("msgs");m.scrollTop=m.scrollHeight}
 function bubble(role,text){const b=el("div",{class:"bub "+(role==="user"?"me":"ai"),text});$("msgs").append(b);scrollChat();return b}
@@ -709,6 +732,11 @@ async function send(textOverride){
   const text=String(textOverride??$("addText").value).trim();
   if(!files.length&&!text)return;
   if(!$("stopBtn").hidden)return;
+  if(SECRET_RE.test(text)){
+    $("addText").value="";$("addText").style.height="";
+    bubble("ai","Не отправил: похоже, тут логин или пароль. Пароли сюда не пиши — они ушли бы в Google, а войти за тебя на сайт я всё равно не могу. Если уже отправлял пароль раньше, лучше его сменить. Чтобы добавить оценки или расписание, пришли скриншот.");
+    return;
+  }
   const pics=files;files=[];$("files").value="";$("thumbs").replaceChildren();
   $("addText").value="";$("addText").style.height="";
   chat.push({role:"user",content:(pics.length?"📎 фото: "+pics.length+(text?"\n":""):"")+text});
@@ -730,6 +758,8 @@ const RULES=`Ты — ИИ-ассистент в «Учебном пульте»
 - Ссылайся на элементы по их "id" из данных. day: 1=понедельник … 7=воскресенье. Время "HH:MM". Даты "YYYY-MM-DD", относительные («к пятнице», «завтра») считай от сегодняшней даты.
 - weeks у пары: "all", "odd" (числитель) или "even" (знаменатель).
 - Всё, что не пара/задание/оценка, но полезно (экзамены, контакты, ссылки, заметки), клади в разделы через upsert_section.
+- Никогда не сохраняй логины, пароли, коды и токены ни в разделы, ни куда-либо ещё. Если студент их прислал — не используй, посоветуй сменить пароль.
+- Ты не можешь заходить на сайты и в электронный дневник. Для оценок и расписания проси скриншот.
 - Отвечай коротко, по-дружески, по-русски, обычным текстом без markdown. Отвечай на вопросы по данным пульта; если данных не хватает — скажи, что прислать.`;
 
 function ctxNow(){
@@ -821,7 +851,8 @@ function errText(e){
     if(e.status===400&&/api key|API_KEY/i.test(e.message))return"Ключ не подходит. Проверь, что скопировал его целиком.";
     if(e.status===401||e.status===403)return"Ключ не подходит или у него нет доступа к Gemini API.";
     if(e.status===404)return"Модель «"+cfg.model+"» не найдена. Открой «Ещё» → «Gemini», нажми ↻ и выбери модель из списка.";
-    if(e.status===429)return"Лимит запросов Gemini исчерпан. Подожди минуту и попробуй ещё раз.";
+    if(e.status===429)return"Лимит запросов Gemini исчерпан на всех моделях. Подожди минуту и попробуй ещё раз.";
+    if(e.status>=500)return"Gemini сейчас перегружен: попробовал несколько моделей, все заняты. Это на стороне Google — попробуй через пару минут.";
     return"Gemini вернул ошибку "+e.status+(e.message?": "+e.message:"");
   }
   if(e?.code==="invalid_json")return"Ответ получился кривой — отправь ещё раз.";
