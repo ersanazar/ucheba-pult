@@ -270,11 +270,11 @@ textarea.field{min-height:96px;resize:vertical;line-height:1.35}
       <div class="sh"><span>Gemini</span></div>
       <div class="group">
         <div class="cell"><input type="password" id="gKey" class="field" placeholder="Вставь ключ API" autocomplete="off" spellcheck="false"></div>
-        <div class="cell"><input type="text" id="gModel" class="field" placeholder="gemini-2.5-flash" autocomplete="off" spellcheck="false"></div>
-        <div class="cell"><button class="cellbtn" id="gSave">Сохранить</button></div>
+        <div class="cell"><button class="cellbtn" id="gSave">Сохранить и проверить ключ</button></div>
+        <div class="cell"><span class="val" style="flex:none">Модель</span><select id="gModel" class="field" aria-label="Модель Gemini" style="text-align:right;text-align-last:right;color:var(--blue)"></select><button class="link" id="gReload" type="button" aria-label="Обновить список моделей" title="Обновить список моделей">↻</button></div>
         <div class="cell"><a id="gGet" class="b" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Получить ключ в Google AI Studio</a><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 1l6 6-6 6"/></svg></div>
       </div>
-      <div class="sf">Ключ хранится только в этом браузере на этом устройстве и уходит только в Google. Вторая строка — модель, менять не обязательно.</div>
+      <div class="sf" id="gStatus">Ключ хранится только в этом браузере на этом устройстве и уходит только в Google. Список моделей подтянется сам после сохранения ключа.</div>
     </div>
 
     <div class="sec">
@@ -584,11 +584,53 @@ $("clrAll").onclick=()=>ask("Все пары, задания, оценки и р
 
 /* ---------- Gemini settings ---------- */
 const CFG=LS+"-gemini";
-let cfg={key:"",model:"gemini-2.5-flash"};
+let cfg={key:"",model:""};
 try{cfg={...cfg,...JSON.parse(localStorage.getItem(CFG)||"{}")}}catch(e){}
-$("gKey").value=cfg.key;$("gModel").value=cfg.model;
-$("gSave").onclick=()=>{cfg.key=$("gKey").value.trim();cfg.model=$("gModel").value.trim()||"gemini-2.5-flash";$("gModel").value=cfg.model;
-  try{localStorage.setItem(CFG,JSON.stringify(cfg))}catch(e){};$("gSave").textContent="Сохранено ✓";setTimeout(()=>$("gSave").textContent="Сохранить",1500)};
+// Gemini wants the bare model id: "gemini-2.5-flash", not "models/…" or "Gemini 2.5 Flash"
+function normModel(m){return String(m||"").trim().replace(/^models\//i,"").toLowerCase().replace(/\s+/g,"-")}
+cfg.model=normModel(cfg.model);
+function saveCfg(){try{localStorage.setItem(CFG,JSON.stringify(cfg))}catch(e){}}
+let models=[];
+// newest stable Flash first: fast, cheap, handles photos
+function rankModel(n){
+  const v=parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(n)||[])[1]||0);
+  let s=v*100;
+  if(/flash/.test(n))s+=30; if(/lite/.test(n))s-=20; if(/pro/.test(n))s+=10;
+  if(/preview|exp/.test(n))s-=15; if(/-\d{3}$|-\d{2}-\d{4}$/.test(n))s-=2;
+  return s;
+}
+function fillModels(){
+  const sel=$("gModel");sel.replaceChildren();
+  const list=models.length?models:(cfg.model?[{id:cfg.model,label:cfg.model}]:[]);
+  if(!list.length)sel.append(el("option",{value:"",text:"появится после ключа"}));
+  list.forEach(m=>sel.append(el("option",{value:m.id,text:m.label})));
+  sel.value=cfg.model;
+}
+async function loadModels(){
+  if(!cfg.key)throw{code:"no_key"};
+  let r;
+  try{r=await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",{headers:{"x-goog-api-key":cfg.key}})}
+  catch(e){throw{code:"network"}}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw{code:"http",status:r.status,message:j?.error?.message||""};
+  models=(j.models||[])
+    .filter(m=>(m.supportedGenerationMethods||[]).includes("generateContent")&&/gemini/i.test(m.name)&&!/embed|tts|image|audio|live|robotics|computer-use|aqa/i.test(m.name))
+    .map(m=>{const id=normModel(m.name);return{id,label:id}})
+    .sort((a,b)=>rankModel(b.id)-rankModel(a.id));
+  if(!models.some(m=>m.id===cfg.model)&&models[0]){cfg.model=models[0].id;saveCfg()}
+  fillModels();
+  return models.length;
+}
+async function checkKey(){
+  const st=$("gStatus");st.textContent="Проверяю ключ…";
+  try{const n=await loadModels();st.textContent=n?"✓ Ключ работает. Моделей доступно: "+n+". Выбрана "+cfg.model+".":"Ключ принят, но моделей Gemini для него нет. Проверь ключ в Google AI Studio."}
+  catch(e){st.textContent=errText(e)}
+}
+$("gKey").value=cfg.key;fillModels();
+$("gSave").onclick=()=>{cfg.key=$("gKey").value.trim();saveCfg();checkKey()};
+$("gReload").onclick=checkKey;
+$("gModel").onchange=e=>{cfg.model=normModel(e.target.value);saveCfg();$("gStatus").textContent="Модель: "+cfg.model};
+if(cfg.key)loadModels().catch(()=>{});
 
 /* ---------- backup ---------- */
 $("exportBtn").onclick=()=>{
@@ -601,15 +643,24 @@ $("importFile").onchange=async e=>{
   e.target.value="";
 };
 
-async function gemini(body,signal){
+async function gemini(body,signal,retried){
   if(!cfg.key)throw{code:"no_key"};
+  if(!cfg.model){await loadModels().catch(()=>{});if(!cfg.model)throw{code:"no_model"}}
   let r;
   try{
     r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(cfg.model)+":generateContent",
       {method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":cfg.key},body:JSON.stringify(body),signal});
   }catch(e){if(e?.name==="AbortError")throw{code:"cancelled"};throw{code:"network"}}
   const j=await r.json().catch(()=>({}));
-  if(!r.ok)throw{code:"http",status:r.status,message:j?.error?.message||""};
+  if(!r.ok){
+    const msg=j?.error?.message||"";
+    // model retired or misspelled: pick a working one from the key's list and retry once
+    if(!retried&&(r.status===404||/not found|not supported|unknown model/i.test(msg))){
+      const old=cfg.model;await loadModels().catch(()=>{});
+      if(cfg.model&&cfg.model!==old)return gemini(body,signal,true);
+    }
+    throw{code:"http",status:r.status,message:msg};
+  }
   const c=j.candidates?.[0];
   if(!c)throw{code:"refused"};
   return c;
@@ -764,11 +815,12 @@ function toJpeg(file){
 function compactState(){return JSON.stringify({schedule:state.schedule,homework:state.homework,grades:state.grades,sections:state.sections,parity:state.parity})}
 function errText(e){
   if(e?.code==="no_key")return"Нет ключа Gemini. Вставь его во вкладке «Ещё» → «Gemini» и нажми «Сохранить».";
+  if(e?.code==="no_model")return"Не нашёл ни одной модели Gemini для твоего ключа. Открой «Ещё» → «Gemini» и нажми «Сохранить и проверить ключ».";
   if(e?.code==="network")return"Нет связи с Gemini. Проверь интернет (в некоторых странах Gemini доступен только через VPN).";
   if(e?.code==="http"){
     if(e.status===400&&/api key|API_KEY/i.test(e.message))return"Ключ не подходит. Проверь, что скопировал его целиком.";
     if(e.status===401||e.status===403)return"Ключ не подходит или у него нет доступа к Gemini API.";
-    if(e.status===404)return"Модель «"+cfg.model+"» не найдена. Поменяй её в «Ещё» → «Gemini», например на gemini-2.5-flash.";
+    if(e.status===404)return"Модель «"+cfg.model+"» не найдена. Открой «Ещё» → «Gemini», нажми ↻ и выбери модель из списка.";
     if(e.status===429)return"Лимит запросов Gemini исчерпан. Подожди минуту и попробуй ещё раз.";
     return"Gemini вернул ошибку "+e.status+(e.message?": "+e.message:"");
   }
